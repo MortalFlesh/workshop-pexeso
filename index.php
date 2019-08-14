@@ -54,21 +54,22 @@ function showTable($table, $currentPlayer, $selectedImages)
     ?><div class="table"><?php
     foreach ($table->images as $index => $image) {
         $currentImage = $index + 1;
-        $isHidden = !in_array($currentImage, $selectedImages);
+        $isSelected = in_array($currentImage, $selectedImages);
+        $isUncovered = in_array($image->id, $_SESSION["uncovered"]);
 
-        if ($isHidden) {
+        if (!$isSelected && !$isUncovered) {
             if ($selectedImages['first'] > 0 && $selectedImages['second'] === 0) {
-                ?><div class="image">
+                ?><div class="image" title="<?=$image->id?>">
                     <a href="?firstImage=<?=$selectedImages['first']?>&secondImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
                 </div><?php
             } else {
-                ?><div class="image">
+                ?><div class="image" title="<?=$image->id?>">
                     <a href="?firstImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
                 </div><?php
             }
         } else {
-            ?><div class="image">
-                <img src="<?=$image->source?>" alt="<?=$image->name?>" />
+            ?><div class="image" title="<?=$image->id?>">
+                <img src="<?=$image->source?>" alt="<?=$image->id?>" />
             </div><?php
         }
     }
@@ -79,36 +80,62 @@ function showTable($table, $currentPlayer, $selectedImages)
 
 if (!array_key_exists('table', $_SESSION) || ($_GET["game"] ?? "") === "new") {
     $table = new Table([1 => new Player(1, 'Peter'), 2 => new Player(2, 'Deni'), ], [new Image(1), new Image(2), new Image(3), new Image(4)]);
+
+    session_unset();
+
     $_SESSION["table"] = serialize($table);
     $_SESSION["player"] = 1;
     $_SESSION["score"] = [
         1 => 0,
         2 => 0,
     ];
+    $_SESSION["uncovered"] = [];
+
+    $_SESSION['debug'] = [];
 } else {
-    $table = unserialize($_SESSION["table"]);
+    $table = unserialize($_SESSION["table"], [Table::class]);
 }
 
 $currentPlayer = $table->players[$_SESSION["player"]];
 
-$firstImage = (int) ($_GET["firstImage"] ?? 0);
-if ($firstImage > 0) {
-    $secondImage = (int) ($_GET["secondImage"] ?? 0);
+$firstImageIndex = (int) ($_GET["firstImage"] ?? 0);
+if ($firstImageIndex > 0) {
+    $secondImageIndex = (int) ($_GET["secondImage"] ?? 0);
 } else {
-    $secondImage = 0;
+    $secondImageIndex = 0;
 }
 
 $status = 'Na řadě je hráč ' . $currentPlayer->name;
 
-if ($firstImage > 0 && $secondImage > 0) {
-    $isSame = $table->images[$firstImage]->id === $table->images[$secondImage]->id;
+if ($firstImageIndex > 0 && $secondImageIndex > 0) {
+    $firstImage = $table->images[$firstImageIndex - 1];
+    $secondImage = $table->images[$secondImageIndex - 1];
 
-    if ($isSame) {
+    if ($firstImage->id === $secondImage->id) {
         $_SESSION["score"][$currentPlayer->id]++;
+        $_SESSION["uncovered"][] = $firstImage->id;
 
-        $status = 'Hráč ' . $currentPlayer->name . ' uhádl a pokračuje. <a href="?game=continue">Pokračovat</a>';
+        if (count($_SESSION["uncovered"]) === count($table->images) / 2) {
+            $firstPlayerScore = $_SESSION["score"][1];
+            $secondPlayerScore = $_SESSION["score"][2];
+
+            if ($firstPlayerScore > $secondPlayerScore) {
+                $winner = $table->players[1];
+                $result = 'Vyhrál hráč ' . $winner->name . '!!!';
+            } elseif ($secondPlayerScore > $firstPlayerScore) {
+                $winner = $table->players[2];
+                $result = 'Vyhrál hráč ' . $winner->name . '!!!';
+            } else {
+                $result = 'Hra skončila remízou.';
+            }
+
+            $status = 'Hráč ' . $currentPlayer->name . ' uhádl a hra končí.<br />' . $result;
+
+        } else {
+            $status = 'Hráč ' . $currentPlayer->name . ' uhádl a pokračuje. <a href="?game=continue">Pokračovat</a>';
+        }
     } else {
-        if ($currentPlayer->id = 1) {
+        if ($currentPlayer->id === 1) {
             $_SESSION["player"] = 2;
         } else {
             $_SESSION["player"] = 1;
@@ -119,8 +146,8 @@ if ($firstImage > 0 && $secondImage > 0) {
 }
 
 $selectedImages = [
-    "first" => $firstImage,
-    "second" => $secondImage
+    "first" => $firstImageIndex,
+    "second" => $secondImageIndex
 ];
 
 ?>
