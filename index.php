@@ -3,12 +3,10 @@
 class Image {
     public $id;
     public $source;
-    public $isHidden;
 
     public function __construct($id) {
         $this->id = $id;
         $this->source = 'images/image_' . $id . '.jpg';
-        $this->isHidden = false;
     }
 }
 
@@ -35,17 +33,7 @@ class Table {
     }
 }
 
-$table = new Table([
-    new Player(1, 'Peter'),
-    new Player(2, 'Deni'),
-], [
-    new Image(1),
-    new Image(2),
-    new Image(3),
-    new Image(4),
-]);
-
-function showTable($table)
+function showTable($table, $selectedImages)
 {
     ?><div class="players"><?php
     foreach ($table->players as $player) {
@@ -56,11 +44,20 @@ function showTable($table)
     ?><br class="clear" /></div><?php
 
     ?><div class="table"><?php
-    foreach ($table->images as $image) {
-        if ($image->isHidden) {
-            ?><div class="image">
-                <img src="images/hidden.jpg" alt="hidden" />
-            </div><?php
+    foreach ($table->images as $index => $image) {
+        $currentImage = $index + 1;
+        $isHidden = !in_array($currentImage, $selectedImages);
+
+        if ($isHidden) {
+            if ($selectedImages['first'] > 0) {
+                ?><div class="image">
+                    <a href="?firstImage=<?=$selectedImages['first']?>&secondImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
+                </div><?php
+            } else {
+                ?><div class="image">
+                    <a href="?firstImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
+                </div><?php
+            }
         } else {
             ?><div class="image">
                 <img src="<?=$image->source?>" alt="<?=$image->name?>" />
@@ -68,6 +65,37 @@ function showTable($table)
         }
     }
     ?><br class="clear" /></div><?php
+}
+
+// Game
+
+$table = new Table([new Player(1, 'Peter'), new Player(2, 'Deni'), ], [new Image(1), new Image(2), new Image(3), new Image(4)]);
+// todo - current table setup must be in session
+
+$firstImage = (int) ($_GET["firstImage"] ?? 0);
+if ($firstImage > 0) {
+    $secondImage = (int) ($_GET["secondImage"] ?? 0);
+} else {
+    $secondImage = 0;
+}
+
+if ($firstImage > 0 && $secondImage > 0) {
+    $isSame = $table->images[$firstImage]->id === $table->images[$secondImage]->id;
+
+    if ($isSame) {
+        // todo -  player[current]++
+        // set current player
+    }
+
+    $selectedImages = [
+        "first" => 0,
+        "second" => 0,
+    ];
+} else {
+    $selectedImages = [
+        "first" => $firstImage,
+        "second" => $secondImage
+    ];
 }
 
 ?>
@@ -99,7 +127,7 @@ function showTable($table)
                 background: #fadcb4;
             }
 
-            .image {    
+            .image {
                 float: left;
                 height: 200px;
                 width: 200px;
@@ -108,6 +136,6 @@ function showTable($table)
         </style>
     </head>
     <body>
-        <?=showTable($table)?>
+        <?=showTable($table, $selectedImages)?>
     </body>
 </html>
