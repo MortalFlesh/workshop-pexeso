@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+// Types & functions
+
 class Image {
     public $id;
     public $source;
@@ -59,16 +61,16 @@ function showTable($table, $currentPlayer, $selectedImages)
 
         if (!$isSelected && !$isUncovered) {
             if ($selectedImages['first'] > 0 && $selectedImages['second'] === 0) {
-                ?><div class="image" title="<?=$image->id?>">
+                ?><div class="image">
                     <a href="?firstImage=<?=$selectedImages['first']?>&secondImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
                 </div><?php
             } else {
-                ?><div class="image" title="<?=$image->id?>">
+                ?><div class="image">
                     <a href="?firstImage=<?=$currentImage?>"><img src="images/hidden.jpg" alt="hidden" /></a>
                 </div><?php
             }
         } else {
-            ?><div class="image" title="<?=$image->id?>">
+            ?><div class="image">
                 <img src="<?=$image->source?>" alt="<?=$image->id?>" />
             </div><?php
         }
@@ -78,20 +80,37 @@ function showTable($table, $currentPlayer, $selectedImages)
 
 // Game
 
-if (!array_key_exists('table', $_SESSION) || ($_GET["game"] ?? "") === "new") {
-    $table = new Table([1 => new Player(1, 'Peter'), 2 => new Player(2, 'Deni'), ], [new Image(1), new Image(2), new Image(3), new Image(4)]);
+if (!empty($_POST["firstPlayer"]) && !empty($_POST["secondPlayer"])) {
+    $table = new Table([
+        1 => new Player(1, $_POST["firstPlayer"]),
+        2 => new Player(2, $_POST["secondPlayer"]),
+    ], [new Image(1), new Image(2), new Image(3), new Image(4)]);
 
     session_unset();
 
     $_SESSION["table"] = serialize($table);
-    $_SESSION["player"] = 1;
+    $_SESSION["player"] = rand(1,2);
     $_SESSION["score"] = [
         1 => 0,
         2 => 0,
     ];
     $_SESSION["uncovered"] = [];
-
-    $_SESSION['debug'] = [];
+} elseif (!array_key_exists('table', $_SESSION) || ($_GET["game"] ?? "") === "new") {
+    ?><html>
+        <head>
+            <title>Pexeso</title>
+        </head>
+        <body>
+            <div>
+                <form action="?game=start" method="post">
+                    <input type="text" name="firstPlayer" placeholder="První hráč ...">
+                    <input type="text" name="secondPlayer" placeholder="Druhý hráč ...">
+                    <input type="submit" value="Začít">
+                </form>
+            </div>
+        </body>
+    </html><?php
+    exit;
 } else {
     $table = unserialize($_SESSION["table"], [Table::class]);
 }
